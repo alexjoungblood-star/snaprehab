@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SnapRehab - AI-Powered Photo-to-Estimate Rehab Tool</title>
+  <meta name="description" content="Walk through a property. Snap photos. Get a complete rehab estimate, scope of work, and material takeoff in minutes. SnapRehab turns your phone into a virtual contractor.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --primary: #4F46E5;
+      --primary-dark: #4338CA;
+      --primary-light: #EEF2FF;
+      --accent: #F59E0B;
+      --accent-dark: #D97706;
+      --text: #111827;
+      --text-secondary: #6B7280;
+      --text-light: #9CA3AF;
+      --bg: #FFFFFF;
+      --bg-alt: #F9FAFB;
+      --bg-dark: #0F172A;
+      --border: #E5E7EB;
+      --success: #10B981;
+      --radius: 12px;
+      --radius-lg: 20px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* ==================== NAV ==================== */
+    nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      z-index: 100;
+      padding: 16px 0;
+    }
+
+    nav .container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 800;
+      font-size: 22px;
+      color: var(--primary);
+      text-decoration: none;
+    }
+
+    .logo-icon {
+      width: 36px;
+      height: 36px;
+      background: var(--primary);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 18px;
+    }
+
+    nav ul {
+      display: flex;
+      list-style: none;
+      gap: 32px;
+      align-items: center;
+    }
+
+    nav a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-weight: 500;
+      font-size: 15px;
+      transition: color 0.2s;
+    }
+
+    nav a:hover { color: var(--text); }
+
+    .nav-cta {
+      background: var(--primary);
+      color: white !important;
+      padding: 10px 24px;
+      border-radius: 8px;
+      font-weight: 600;
+      transition: background 0.2s;
+    }
+
+    .nav-cta:hover { background: var(--primary-dark); }
+
+    /* ==================== HERO ==================== */
+    .hero {
+      padding: 160px 0 100px;
+      text-align: center;
+      background: linear-gradient(180deg, var(--primary-light) 0%, var(--bg) 100%);
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      padding: 6px 16px 6px 8px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      margin-bottom: 24px;
+    }
+
+    .hero-badge-dot {
+      width: 8px;
+      height: 8px;
+      background: var(--success);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .hero h1 {
+      font-size: clamp(40px, 6vw, 72px);
+      font-weight: 800;
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+      margin-bottom: 24px;
+      max-width: 900px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .hero h1 .gradient {
+      background: linear-gradient(135deg, var(--primary) 0%, #7C3AED 50%, var(--accent) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero p {
+      font-size: 20px;
+      color: var(--text-secondary);
+      max-width: 640px;
+      margin: 0 auto 40px;
+      line-height: 1.7;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 16px 32px;
+      border-radius: 12px;
+      font-size: 17px;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+      box-shadow: 0 4px 16px rgba(79, 70, 229, 0.3);
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-dark);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 24px rgba(79, 70, 229, 0.4);
+    }
+
+    .btn-secondary {
+      background: white;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      background: var(--bg-alt);
+      border-color: var(--text-light);
+    }
+
+    .hero-stats {
+      display: flex;
+      justify-content: center;
+      gap: 60px;
+      margin-top: 80px;
+      padding-top: 40px;
+      border-top: 1px solid var(--border);
+    }
+
+    .hero-stat h3 {
+      font-size: 36px;
+      font-weight: 800;
+      color: var(--primary);
+    }
+
+    .hero-stat p {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin: 0;
+    }
+
+    /* ==================== HOW IT WORKS ==================== */
+    .how-it-works {
+      padding: 120px 0;
+    }
+
+    .section-label {
+      text-transform: uppercase;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      color: var(--primary);
+      margin-bottom: 12px;
+    }
+
+    .section-title {
+      font-size: clamp(32px, 4vw, 48px);
+      font-weight: 800;
+      line-height: 1.2;
+      letter-spacing: -0.02em;
+      margin-bottom: 16px;
+    }
+
+    .section-subtitle {
+      font-size: 18px;
+      color: var(--text-secondary);
+      max-width: 600px;
+      line-height: 1.7;
+      margin-bottom: 64px;
+    }
+
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 32px;
+    }
+
+    .step {
+      position: relative;
+      padding: 32px 24px;
+      background: var(--bg-alt);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border);
+      transition: all 0.3s;
+    }
+
+    .step:hover {
+      border-color: var(--primary);
+      box-shadow: 0 8px 32px rgba(79, 70, 229, 0.08);
+      transform: translateY(-4px);
+    }
+
+    .step-number {
+      width: 48px;
+      height: 48px;
+      background: var(--primary);
+      color: white;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 20px;
+      margin-bottom: 20px;
+    }
+
+    .step h3 {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .step p {
+      font-size: 15px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+
+    /* ==================== FEATURES ==================== */
+    .features {
+      padding: 120px 0;
+      background: var(--bg-alt);
+    }
+
+    .features .section-label,
+    .features .section-title,
+    .features .section-subtitle {
+      text-align: center;
+    }
+
+    .features .section-subtitle {
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+    }
+
+    .feature-card {
+      background: white;
+      border-radius: var(--radius-lg);
+      padding: 36px 28px;
+      border: 1px solid var(--border);
+      transition: all 0.3s;
+    }
+
+    .feature-card:hover {
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.06);
+      transform: translateY(-2px);
+    }
+
+    .feature-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      margin-bottom: 20px;
+    }
+
+    .feature-icon.purple { background: #EDE9FE; }
+    .feature-icon.blue { background: #DBEAFE; }
+    .feature-icon.green { background: #D1FAE5; }
+    .feature-icon.yellow { background: #FEF3C7; }
+    .feature-icon.red { background: #FEE2E2; }
+    .feature-icon.indigo { background: var(--primary-light); }
+
+    .feature-card h3 {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .feature-card p {
+      font-size: 15px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+
+    /* ==================== ESTIMATE PREVIEW ==================== */
+    .estimate-preview {
+      padding: 120px 0;
+    }
+
+    .estimate-preview .container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 80px;
+      align-items: center;
+    }
+
+    .estimate-preview .section-subtitle {
+      margin-bottom: 32px;
+    }
+
+    .estimate-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .estimate-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      font-size: 16px;
+    }
+
+    .estimate-list .check {
+      width: 24px;
+      height: 24px;
+      min-width: 24px;
+      background: #D1FAE5;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #059669;
+      font-size: 14px;
+      margin-top: 2px;
+    }
+
+    .estimate-mockup {
+      background: var(--bg-alt);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+
+    .mockup-header {
+      background: var(--bg-dark);
+      color: white;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .mockup-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+
+    .mockup-dot.red { background: #EF4444; }
+    .mockup-dot.yellow { background: #F59E0B; }
+    .mockup-dot.green { background: #10B981; }
+
+    .mockup-title {
+      font-size: 13px;
+      font-weight: 600;
+      margin-left: 8px;
+      opacity: 0.8;
+    }
+
+    .mockup-body { padding: 24px; }
+
+    .mockup-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+    }
+
+    .mockup-row:last-child {
+      border-bottom: none;
+      font-weight: 700;
+      font-size: 16px;
+      color: var(--primary);
+    }
+
+    .mockup-category {
+      font-weight: 700;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-light);
+      padding: 16px 0 4px;
+    }
+
+    /* ==================== PRICING ==================== */
+    .pricing {
+      padding: 120px 0;
+      background: var(--bg-alt);
+    }
+
+    .pricing .section-label,
+    .pricing .section-title,
+    .pricing .section-subtitle {
+      text-align: center;
+    }
+
+    .pricing .section-subtitle {
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    .pricing-card {
+      background: white;
+      border-radius: var(--radius-lg);
+      padding: 40px 32px;
+      border: 1px solid var(--border);
+      position: relative;
+    }
+
+    .pricing-card.featured {
+      border-color: var(--primary);
+      box-shadow: 0 8px 32px rgba(79, 70, 229, 0.12);
+    }
+
+    .pricing-popular {
+      position: absolute;
+      top: -14px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--primary);
+      color: white;
+      padding: 4px 16px;
+      border-radius: 100px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .pricing-card h3 {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .pricing-card .price {
+      font-size: 48px;
+      font-weight: 800;
+      margin: 16px 0;
+    }
+
+    .pricing-card .price span {
+      font-size: 16px;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    .pricing-card .price-desc {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-bottom: 24px;
+    }
+
+    .pricing-features {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+
+    .pricing-features li {
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .pricing-features li::before {
+      content: "\2713";
+      color: var(--success);
+      font-weight: 700;
+    }
+
+    /* ==================== CTA / WAITLIST ==================== */
+    .cta {
+      padding: 120px 0;
+      text-align: center;
+      background: var(--bg-dark);
+      color: white;
+    }
+
+    .cta .section-label { color: var(--accent); }
+
+    .cta .section-title { color: white; }
+
+    .cta .section-subtitle {
+      color: rgba(255, 255, 255, 0.6);
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .waitlist-form {
+      display: flex;
+      gap: 12px;
+      max-width: 500px;
+      margin: 0 auto;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .waitlist-form input {
+      flex: 1;
+      min-width: 240px;
+      padding: 16px 20px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: rgba(255, 255, 255, 0.08);
+      color: white;
+      font-size: 16px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .waitlist-form input::placeholder { color: rgba(255, 255, 255, 0.4); }
+    .waitlist-form input:focus { border-color: var(--primary); }
+
+    .waitlist-form button {
+      padding: 16px 32px;
+      background: var(--accent);
+      color: var(--bg-dark);
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.2s;
+    }
+
+    .waitlist-form button:hover { background: var(--accent-dark); }
+
+    .waitlist-success {
+      display: none;
+      color: var(--success);
+      font-weight: 600;
+      margin-top: 16px;
+    }
+
+    .waitlist-note {
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.4);
+      margin-top: 16px;
+    }
+
+    /* ==================== FOOTER ==================== */
+    footer {
+      padding: 48px 0;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      background: var(--bg-dark);
+      color: rgba(255, 255, 255, 0.4);
+    }
+
+    footer .container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    footer a {
+      color: rgba(255, 255, 255, 0.4);
+      text-decoration: none;
+    }
+
+    footer a:hover { color: white; }
+
+    /* ==================== RESPONSIVE ==================== */
+    @media (max-width: 900px) {
+      .steps { grid-template-columns: repeat(2, 1fr); }
+      .feature-grid { grid-template-columns: repeat(2, 1fr); }
+      .pricing-grid { grid-template-columns: 1fr; max-width: 400px; }
+      .estimate-preview .container { grid-template-columns: 1fr; gap: 48px; }
+      .hero-stats { gap: 32px; }
+      nav ul { gap: 16px; }
+    }
+
+    @media (max-width: 600px) {
+      .steps { grid-template-columns: 1fr; }
+      .feature-grid { grid-template-columns: 1fr; }
+      .hero-stats { flex-direction: column; gap: 24px; }
+      nav ul li:not(:last-child) { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="container">
+    <a href="#" class="logo">
+      <div class="logo-icon">S</div>
+      SnapRehab
+    </a>
+    <ul>
+      <li><a href="#how-it-works">How It Works</a></li>
+      <li><a href="#features">Features</a></li>
+      <li><a href="#pricing">Pricing</a></li>
+      <li><a href="#waitlist" class="nav-cta">Join Waitlist</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="container">
+    <div class="hero-badge">
+      <div class="hero-badge-dot"></div>
+      Now in Early Access
+    </div>
+    <h1>
+      Walk Through. Snap Photos.<br>
+      <span class="gradient">Get a Complete Rehab Estimate.</span>
+    </h1>
+    <p>
+      SnapRehab turns your phone into a virtual contractor. AI analyzes your property photos room by room and generates a full rehab estimate, scope of work, and material takeoff in minutes.
+    </p>
+    <div class="hero-actions">
+      <a href="#waitlist" class="btn btn-primary">Join the Waitlist</a>
+      <a href="#how-it-works" class="btn btn-secondary">See How It Works</a>
+    </div>
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <h3>10 min</h3>
+        <p>Average walkthrough time</p>
+      </div>
+      <div class="hero-stat">
+        <h3>80+</h3>
+        <p>Repair items in cost database</p>
+      </div>
+      <div class="hero-stat">
+        <h3>100+</h3>
+        <p>Zip-code pricing regions</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="how-it-works" id="how-it-works">
+  <div class="container">
+    <div class="section-label">How It Works</div>
+    <h2 class="section-title">Four steps to a complete estimate</h2>
+    <p class="section-subtitle">
+      No spreadsheets. No guesswork. Walk through the property and let AI do the heavy lifting.
+    </p>
+    <div class="steps">
+      <div class="step">
+        <div class="step-number">1</div>
+        <h3>Create Property</h3>
+        <p>Enter the address, property details, and your target rehab level. SnapRehab adjusts everything to your scope.</p>
+      </div>
+      <div class="step">
+        <div class="step-number">2</div>
+        <h3>Snap Photos</h3>
+        <p>Follow guided prompts for exterior and each room. The app tells you exactly what to capture for best results.</p>
+      </div>
+      <div class="step">
+        <div class="step-number">3</div>
+        <h3>AI Analyzes</h3>
+        <p>Claude Vision identifies defects, flags repair needs, asks smart follow-up questions, and suggests repair items with costs.</p>
+      </div>
+      <div class="step">
+        <div class="step-number">4</div>
+        <h3>Get Your Estimate</h3>
+        <p>Receive a complete rehab estimate, scope of work, and export-ready PDF for contractors and lenders.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="features" id="features">
+  <div class="container">
+    <div class="section-label">Features</div>
+    <h2 class="section-title">Everything you need to estimate a rehab</h2>
+    <p class="section-subtitle">
+      Built by investors, for investors. Every feature exists because we needed it on our own deals.
+    </p>
+    <div class="feature-grid">
+      <div class="feature-card">
+        <div class="feature-icon purple">&#128247;</div>
+        <h3>AI Photo Analysis</h3>
+        <p>Claude Vision and GPT-4o detect water damage, cracks, outdated materials, structural issues, and more from your photos.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon blue">&#128172;</div>
+        <h3>Smart Follow-Ups</h3>
+        <p>The AI asks targeted questions based on what it sees. "Does the floor feel spongy near the tub?" "How old is the roof?"</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon green">&#128176;</div>
+        <h3>Zip-Code Pricing</h3>
+        <p>Every cost is adjusted to your local market using regional labor and material factors. No more national averages.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon yellow">&#128221;</div>
+        <h3>Scope of Work</h3>
+        <p>Auto-generated, contractor-ready scope documents. Room by room, item by item. Hand it directly to your GC for bidding.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon red">&#128200;</div>
+        <h3>Detailed Estimates</h3>
+        <p>Categorized line items with quantities, unit costs, and totals. Fully editable. Add your own pricing and adjust anything.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon indigo">&#128196;</div>
+        <h3>PDF Export</h3>
+        <p>Export professional estimate and scope of work documents. Share with contractors, lenders, and partners instantly.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ESTIMATE PREVIEW -->
+<section class="estimate-preview">
+  <div class="container">
+    <div>
+      <div class="section-label">See It In Action</div>
+      <h2 class="section-title">Real estimates, not guesses</h2>
+      <p class="section-subtitle">
+        SnapRehab produces the same level of detail you'd get from a professional estimator, in a fraction of the time.
+      </p>
+      <ul class="estimate-list">
+        <li>
+          <div class="check">&#10003;</div>
+          <span><strong>Line-item detail</strong> -- Every repair broken down by category, quantity, unit, and cost</span>
+        </li>
+        <li>
+          <div class="check">&#10003;</div>
+          <span><strong>Editable everything</strong> -- Override any price, quantity, or item. The estimate is yours to adjust</span>
+        </li>
+        <li>
+          <div class="check">&#10003;</div>
+          <span><strong>Contingency built in</strong> -- Configurable buffer (default 15%) so you're never caught short</span>
+        </li>
+        <li>
+          <div class="check">&#10003;</div>
+          <span><strong>Multiple AI providers</strong> -- Choose Claude Vision or GPT-4o. Automatic fallback if one is unavailable</span>
+        </li>
+      </ul>
+    </div>
+    <div class="estimate-mockup">
+      <div class="mockup-header">
+        <div class="mockup-dot red"></div>
+        <div class="mockup-dot yellow"></div>
+        <div class="mockup-dot green"></div>
+        <div class="mockup-title">estimate_123_main_st.pdf</div>
+      </div>
+      <div class="mockup-body">
+        <div class="mockup-category">Exterior</div>
+        <div class="mockup-row"><span>Vinyl siding replacement (1,200 SF)</span><span>$6,600</span></div>
+        <div class="mockup-row"><span>Architectural shingle re-roof (20 SQ)</span><span>$9,000</span></div>
+        <div class="mockup-row"><span>Seamless aluminum gutters (120 LF)</span><span>$960</span></div>
+        <div class="mockup-category">Kitchen</div>
+        <div class="mockup-row"><span>White shaker cabinets (30 LF)</span><span>$5,250</span></div>
+        <div class="mockup-row"><span>Quartz countertops (45 SF)</span><span>$2,925</span></div>
+        <div class="mockup-row"><span>LVP flooring (120 SF)</span><span>$540</span></div>
+        <div class="mockup-row"><span>SS appliance package</span><span>$2,800</span></div>
+        <div class="mockup-category">Systems</div>
+        <div class="mockup-row"><span>200A electrical panel upgrade</span><span>$2,500</span></div>
+        <div class="mockup-row"><span>Plumbing fixture replacements</span><span>$1,800</span></div>
+        <div class="mockup-category" style="border-top: 2px solid var(--border); padding-top: 16px;"></div>
+        <div class="mockup-row"><span>Subtotal</span><span>$42,330</span></div>
+        <div class="mockup-row"><span>Contingency (15%)</span><span>$6,350</span></div>
+        <div class="mockup-row"><span>Total Estimate</span><span>$48,680</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section class="pricing" id="pricing">
+  <div class="container">
+    <div class="section-label">Pricing</div>
+    <h2 class="section-title">Simple pricing for every investor</h2>
+    <p class="section-subtitle">
+      Start free, upgrade when you're ready. Cancel anytime.
+    </p>
+    <div class="pricing-grid">
+      <div class="pricing-card">
+        <h3>Starter</h3>
+        <div class="price">$29<span>/mo</span></div>
+        <div class="price-desc">For investors getting started</div>
+        <ul class="pricing-features">
+          <li>3 properties per month</li>
+          <li>AI photo analysis</li>
+          <li>Rehab estimates</li>
+          <li>Scope of work export</li>
+          <li>PDF export</li>
+        </ul>
+        <a href="#waitlist" class="btn btn-secondary" style="width: 100%; justify-content: center;">Get Started</a>
+      </div>
+      <div class="pricing-card featured">
+        <div class="pricing-popular">Most Popular</div>
+        <h3>Pro</h3>
+        <div class="price">$79<span>/mo</span></div>
+        <div class="price-desc">For active flippers</div>
+        <ul class="pricing-features">
+          <li>Unlimited properties</li>
+          <li>AI photo analysis</li>
+          <li>Material takeoffs</li>
+          <li>Custom "Flip Kit" templates</li>
+          <li>Contractor pricing memory</li>
+          <li>Priority AI processing</li>
+        </ul>
+        <a href="#waitlist" class="btn btn-primary" style="width: 100%; justify-content: center;">Get Started</a>
+      </div>
+      <div class="pricing-card">
+        <h3>Team</h3>
+        <div class="price">$199<span>/mo</span></div>
+        <div class="price-desc">For teams and brokerages</div>
+        <ul class="pricing-features">
+          <li>Everything in Pro</li>
+          <li>Up to 10 team members</li>
+          <li>Shared property portfolio</li>
+          <li>Team templates</li>
+          <li>Analytics dashboard</li>
+          <li>Dedicated support</li>
+        </ul>
+        <a href="#waitlist" class="btn btn-secondary" style="width: 100%; justify-content: center;">Contact Us</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA / WAITLIST -->
+<section class="cta" id="waitlist">
+  <div class="container">
+    <div class="section-label">Early Access</div>
+    <h2 class="section-title">Be the first to try SnapRehab</h2>
+    <p class="section-subtitle">
+      Join the waitlist to get early access when we launch. We're letting in investors in small batches.
+    </p>
+    <form class="waitlist-form" id="waitlistForm">
+      <input type="email" id="waitlistEmail" placeholder="Enter your email" required>
+      <button type="submit">Join Waitlist</button>
+    </form>
+    <div class="waitlist-success" id="waitlistSuccess">
+      You're on the list! We'll be in touch soon.
+    </div>
+    <p class="waitlist-note">No spam. We'll only email you when it's time to get access.</p>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="container">
+    <span>&copy; 2026 SnapRehab. All rights reserved.</span>
+    <a href="mailto:hello@snaprehab.com">hello@snaprehab.com</a>
+  </div>
+</footer>
+
+<script>
+  // Waitlist form submission
+  const form = document.getElementById('waitlistForm');
+  const emailInput = document.getElementById('waitlistEmail');
+  const successMsg = document.getElementById('waitlistSuccess');
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = emailInput.value.trim();
+    if (!email) return;
+
+    try {
+      const res = await fetch('https://ehpxxiyaksfqivpvxrci.supabase.co/rest/v1/waitlist', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVocHh4aXlha3NmcWl2cHZ4cmNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyOTEzMTAsImV4cCI6MjA4Nzg2NzMxMH0.ZG3yiu2_5utNyShKnCw7pXxZTO26ytbFbN67cQx2RHY',
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify({ email, source: 'website' })
+      });
+
+      if (res.ok || res.status === 201) {
+        form.style.display = 'none';
+        successMsg.style.display = 'block';
+      } else {
+        // Likely duplicate email
+        form.style.display = 'none';
+        successMsg.textContent = "You're already on the list! We'll be in touch soon.";
+        successMsg.style.display = 'block';
+      }
+    } catch (err) {
+      // Offline or error - still show success for UX
+      form.style.display = 'none';
+      successMsg.style.display = 'block';
+    }
+  });
+</script>
+
+</body>
+</html>
