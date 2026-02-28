@@ -7,6 +7,7 @@ import {
   Image,
   Alert,
   ActivityIndicator,
+  Animated,
   type GestureResponderEvent,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -68,6 +69,21 @@ export default function RoomCaptureScreen() {
 
   const handleTouchEnd = useCallback(() => {
     lastPinchDistance.current = null;
+  }, []);
+
+  // Pinch hint
+  const [showPinchHint, setShowPinchHint] = useState(true);
+  const pinchHintOpacity = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      Animated.timing(pinchHintOpacity, {
+        toValue: 0,
+        duration: 800,
+        useNativeDriver: true,
+      }).start(() => setShowPinchHint(false));
+    }, 2500);
+    return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
@@ -249,6 +265,18 @@ export default function RoomCaptureScreen() {
             <Text style={styles.guideInstruction}>{currentGuide?.instruction}</Text>
           </View>
 
+          {/* Pinch-to-zoom hint */}
+          {showPinchHint && (
+            <Animated.View style={[styles.pinchHint, { opacity: pinchHintOpacity }]}>
+              <View style={styles.pinchGesture}>
+                <Ionicons name="finger-print-outline" size={22} color="rgba(255,255,255,0.9)" />
+                <Text style={styles.pinchArrows}>{' \u2194 '}</Text>
+                <Ionicons name="finger-print-outline" size={22} color="rgba(255,255,255,0.9)" />
+              </View>
+              <Text style={styles.pinchHintText}>Pinch to zoom</Text>
+            </Animated.View>
+          )}
+
           <View style={styles.photoStrip}>
             {photos.map((p, i) => (
               <Image key={i} source={{ uri: p.uri }} style={styles.thumbnail} />
@@ -367,6 +395,28 @@ const styles = StyleSheet.create({
   skipText: {
     ...typography.bodySmall,
     color: 'rgba(255,255,255,0.7)',
+  },
+  pinchHint: {
+    alignSelf: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
+    borderRadius: 16,
+  },
+  pinchGesture: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.xs,
+  },
+  pinchArrows: {
+    fontSize: 20,
+    color: 'rgba(255,255,255,0.9)',
+  },
+  pinchHintText: {
+    ...typography.bodySmall,
+    color: 'rgba(255,255,255,0.9)',
+    fontWeight: '600',
   },
   zoomIndicator: {
     alignSelf: 'center',
