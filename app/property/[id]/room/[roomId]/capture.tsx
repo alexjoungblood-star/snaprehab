@@ -7,6 +7,7 @@ import {
   Image,
   Alert,
   ActivityIndicator,
+  type GestureResponderEvent,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { CameraView, useCameraPermissions } from 'expo-camera';
@@ -39,6 +40,35 @@ export default function RoomCaptureScreen() {
   const [previewUri, setPreviewUri] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [zoom, setZoom] = useState(0);
+  const lastPinchDistance = useRef<number | null>(null);
+  const zoomAtPinchStart = useRef(0);
+
+  const getDistance = (touches: GestureResponderEvent['nativeEvent']['touches']) => {
+    if (touches.length < 2) return 0;
+    const dx = touches[0].pageX - touches[1].pageX;
+    const dy = touches[0].pageY - touches[1].pageY;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
+
+  const handleTouchStart = useCallback((e: GestureResponderEvent) => {
+    if (e.nativeEvent.touches.length === 2) {
+      lastPinchDistance.current = getDistance(e.nativeEvent.touches);
+      zoomAtPinchStart.current = zoom;
+    }
+  }, [zoom]);
+
+  const handleTouchMove = useCallback((e: GestureResponderEvent) => {
+    if (e.nativeEvent.touches.length === 2 && lastPinchDistance.current !== null) {
+      const currentDistance = getDistance(e.nativeEvent.touches);
+      const scale = currentDistance / lastPinchDistance.current;
+      const newZoom = Math.min(1, Math.max(0, zoomAtPinchStart.current + (scale - 1) * 0.5));
+      setZoom(newZoom);
+    }
+  }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    lastPinchDistance.current = null;
+  }, []);
 
   useEffect(() => {
     loadRoom();
@@ -200,8 +230,13 @@ export default function RoomCaptureScreen() {
 
   return (
     <View style={styles.container}>
-      <CameraView ref={cameraRef} style={styles.camera} facing="back" zoom={zoom}>
-        <View style={styles.guideOverlay}>
+      <CameraView ref={cameraRef} style={styles.camera} facing="back" zoom={zoom} selectedLens="builtInUltraWideCamera">
+        <View
+          style={styles.guideOverlay}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
           <View style={styles.topBar}>
             <Text style={styles.roomTitle}>{roomLabel}</Text>
             <Text style={styles.stepText}>
@@ -228,28 +263,12 @@ export default function RoomCaptureScreen() {
             </TouchableOpacity>
           )}
 
-          {/* Zoom controls */}
-          {zoom > 0 && (
+          {/* Zoom indicator */}
+          {zoom > 0.01 && (
             <View style={styles.zoomIndicator}>
               <Text style={styles.zoomText}>{(1 + zoom * 9).toFixed(1)}x</Text>
             </View>
           )}
-          <View style={styles.zoomControls}>
-            <TouchableOpacity
-              style={styles.zoomButton}
-              onPress={() => setZoom((z) => Math.max(0, z - 0.1))}
-              disabled={zoom <= 0}
-            >
-              <Ionicons name="remove" size={20} color={zoom <= 0 ? 'rgba(255,255,255,0.3)' : colors.white} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.zoomButton}
-              onPress={() => setZoom((z) => Math.min(1, z + 0.1))}
-              disabled={zoom >= 1}
-            >
-              <Ionicons name="add" size={20} color={zoom >= 1 ? 'rgba(255,255,255,0.3)' : colors.white} />
-            </TouchableOpacity>
-          </View>
 
           <View style={styles.controls}>
             <TouchableOpacity style={styles.libraryButton} onPress={pickFromLibrary}>
@@ -349,21 +368,12 @@ const styles = StyleSheet.create({
     ...typography.bodySmall,
     color: 'rgba(255,255,255,0.7)',
   },
-  zoomControls: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: spacing.sm,
-  },
-  zoomButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   zoomIndicator: {
     alignSelf: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: 16,
   },
   zoomText: {
     ...typography.bodySmall,
