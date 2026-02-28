@@ -6,6 +6,8 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  TextInput,
+  Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -65,6 +67,10 @@ export default function EstimateScreen() {
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [contingencyPct, setContingencyPct] = useState(defaultContingencyPct);
   const [locationFactorValue, setLocationFactorValue] = useState(1.0);
+
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [editField, setEditField] = useState<'qty' | 'cost' | null>(null);
+  const [editValue, setEditValue] = useState('');
 
   useEffect(() => {
     loadEstimate();
@@ -139,6 +145,62 @@ export default function EstimateScreen() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const startEdit = (itemId: string, field: 'qty' | 'cost', currentValue: number) => {
+    setEditingItemId(itemId);
+    setEditField(field);
+    setEditValue(String(currentValue));
+  };
+
+  const saveEdit = async () => {
+    if (!editingItemId || !editField) return;
+    const numValue = parseFloat(editValue);
+    if (isNaN(numValue) || numValue < 0) {
+      Alert.alert('Invalid', 'Please enter a valid number.');
+      return;
+    }
+
+    const updateData = editField === 'qty'
+      ? { quantity: numValue }
+      : { unit_cost: numValue };
+
+    await supabase
+      .from('repair_items')
+      .update(updateData)
+      .eq('id', editingItemId);
+
+    // Update local state
+    setGroups((prev) =>
+      prev.map((group) => ({
+        ...group,
+        items: group.items.map((item) => {
+          if (item.id !== editingItemId) return item;
+          const newQty = editField === 'qty' ? numValue : item.quantity;
+          const newCost = editField === 'cost' ? numValue : item.unitCost;
+          return {
+            ...item,
+            quantity: newQty,
+            unitCost: newCost,
+            totalCost: newQty * newCost,
+          };
+        }),
+        subtotal: 0, // recalculate below
+      })).map((group) => ({
+        ...group,
+        subtotal: group.items
+          .filter((i) => i.isSelected)
+          .reduce((sum, i) => sum + i.totalCost, 0),
+      }))
+    );
+
+    setEditingItemId(null);
+    setEditField(null);
+  };
+
+  const cancelEdit = () => {
+    setEditingItemId(null);
+    setEditField(null);
   };
 
   const toggleCategory = (category: string) => {
@@ -221,23 +283,72 @@ export default function EstimateScreen() {
                   key={item.id}
                   style={[styles.lineItem, !item.isSelected && styles.lineItemDeselected]}
                 >
-                  <View style={styles.lineItemLeft}>
-                    <Text style={styles.lineItemDesc} numberOfLines={1}>
+                  <View style={styles.lineItemTop}>
+                    <Text style={styles.lineItemDesc} numberOfLines={2}>
                       {item.description}
                     </Text>
                     {item.roomLabel ? (
                       <Text style={styles.lineItemRoom}>{item.roomLabel}</Text>
                     ) : null}
                   </View>
-                  <Text style={styles.lineItemQty}>
-                    {item.quantity} {item.unit}
-                  </Text>
-                  <Text style={styles.lineItemCost}>
-                    {formatCurrency(item.unitCost)}
-                  </Text>
-                  <Text style={styles.lineItemTotal}>
-                    {formatCurrency(item.totalCost)}
-                  </Text>
+                  <View style={styles.lineItemNumbers}>
+                    {/* Quantity — tappable to edit */}
+                    {editingItemId === item.id && editField === 'qty' ? (
+                      <View style={styles.editCell}>
+                        <TextInput
+                          style={styles.editInput}
+                          value={editValue}
+                          onChangeText={setEditValue}
+                          keyboardType="decimal-pad"
+                          autoFocus
+                          selectTextOnFocus
+                          onBlur={saveEdit}
+                          onSubmitEditing={saveEdit}
+                        />
+                        <Text style={styles.editUnit}>{item.unit}</Text>
+                      </View>
+                    ) : (
+                      <TouchableOpacity
+                        style={styles.tappableCell}
+                        onPress={() => startEdit(item.id, 'qty', item.quantity)}
+                      >
+                        <Text style={styles.lineItemQty}>
+                          {item.quantity} {item.unit}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+
+                    {/* Unit cost — tappable to edit */}
+                    {editingItemId === item.id && editField === 'cost' ? (
+                      <View style={styles.editCell}>
+                        <Text style={styles.editDollar}>$</Text>
+                        <TextInput
+                          style={styles.editInput}
+                          value={editValue}
+                          onChangeText={setEditValue}
+                          keyboardType="decimal-pad"
+                          autoFocus
+                          selectTextOnFocus
+                          onBlur={saveEdit}
+                          onSubmitEditing={saveEdit}
+                        />
+                      </View>
+                    ) : (
+                      <TouchableOpacity
+                        style={styles.tappableCell}
+                        onPress={() => startEdit(item.id, 'cost', item.unitCost)}
+                      >
+                        <Text style={styles.lineItemCost}>
+                          {formatCurrency(item.unitCost)}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+
+                    {/* Total — not editable */}
+                    <Text style={styles.lineItemTotal}>
+                      {formatCurrency(item.totalCost)}
+                    </Text>
+                  </View>
                 </View>
               ))}
           </View>
@@ -318,20 +429,62 @@ const styles = StyleSheet.create({
   categoryTitle: { ...typography.body, fontWeight: '700', color: colors.text.primary, flex: 1 },
   categoryTotal: { ...typography.body, fontWeight: '600', color: colors.primary[600] },
   lineItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.base,
     borderBottomWidth: 1,
     borderBottomColor: colors.gray[100],
   },
   lineItemDeselected: { opacity: 0.4 },
-  lineItemLeft: { flex: 3 },
+  lineItemTop: {
+    marginBottom: 4,
+  },
   lineItemDesc: { ...typography.bodySmall, color: colors.text.primary },
   lineItemRoom: { ...typography.caption, color: colors.text.tertiary },
-  lineItemQty: { ...typography.caption, color: colors.text.secondary, flex: 1, textAlign: 'center' },
-  lineItemCost: { ...typography.caption, color: colors.text.secondary, flex: 1, textAlign: 'right' },
-  lineItemTotal: { ...typography.bodySmall, fontWeight: '600', color: colors.text.primary, flex: 1, textAlign: 'right' },
+  lineItemNumbers: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  tappableCell: {
+    backgroundColor: colors.gray[50],
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: colors.gray[200],
+    borderStyle: 'dashed',
+  },
+  editCell: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    borderWidth: 1.5,
+    borderColor: colors.primary[500],
+    borderRadius: 6,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+  },
+  editInput: {
+    ...typography.bodySmall,
+    color: colors.text.primary,
+    fontWeight: '600',
+    minWidth: 50,
+    padding: 0,
+    textAlign: 'right',
+  },
+  editUnit: {
+    ...typography.caption,
+    color: colors.text.secondary,
+    marginLeft: 4,
+  },
+  editDollar: {
+    ...typography.bodySmall,
+    color: colors.text.secondary,
+    marginRight: 2,
+  },
+  lineItemQty: { ...typography.caption, color: colors.text.secondary },
+  lineItemCost: { ...typography.caption, color: colors.text.secondary },
+  lineItemTotal: { ...typography.bodySmall, fontWeight: '700', color: colors.text.primary },
   totalsCard: { marginTop: spacing.xl },
   totalRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.sm },
   totalLabel: { ...typography.body, color: colors.text.secondary },
