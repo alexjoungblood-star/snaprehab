@@ -12,20 +12,40 @@ export default function TabLayout() {
         tabBarStyle: {
           backgroundColor: colors.white,
           borderTopColor: colors.border,
+          paddingBottom: 4,
+          height: 85,
+        },
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '600',
         },
         headerStyle: {
           backgroundColor: colors.white,
         },
         headerTintColor: colors.text.primary,
         headerShadowVisible: false,
+        headerTitleStyle: {
+          fontWeight: '700',
+          fontSize: 18,
+        },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
           title: 'Properties',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home-outline" size={size} color={color} />
+          headerTitle: 'SnapRehab',
+          headerTitleStyle: {
+            fontWeight: '800',
+            fontSize: 20,
+            color: colors.primary[600],
+          },
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons
+              name={focused ? 'home' : 'home-outline'}
+              size={size}
+              color={color}
+            />
           ),
         }}
       />
@@ -33,8 +53,12 @@ export default function TabLayout() {
         name="settings"
         options={{
           title: 'Settings',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="settings-outline" size={size} color={color} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons
+              name={focused ? 'settings' : 'settings-outline'}
+              size={size}
+              color={color}
+            />
           ),
         }}
       />

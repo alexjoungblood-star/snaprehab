@@ -11,7 +11,10 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import * as ImageManipulator from 'expo-image-manipulator';
+let ImagePicker: any = null;
+try { ImagePicker = require('expo-image-picker'); } catch {}
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { colors } from '../../../src/theme/colors';
 import { typography } from '../../../src/theme/typography';
 import { spacing } from '../../../src/theme/spacing';
@@ -58,6 +61,7 @@ export default function ExteriorWalkthroughScreen() {
 
   const takePhoto = async () => {
     if (!cameraRef.current) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     try {
       const photo = await cameraRef.current.takePictureAsync({
@@ -101,6 +105,28 @@ export default function ExteriorWalkthroughScreen() {
 
   const retakePhoto = () => {
     setPreviewUri(null);
+  };
+
+  const pickFromLibrary = async () => {
+    if (!ImagePicker) {
+      Alert.alert('Not Available', 'Photo library requires a new app build. Use the camera for now.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      quality: 0.9,
+      allowsEditing: false,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      const compressed = await ImageManipulator.manipulateAsync(
+        result.assets[0].uri,
+        [{ resize: { width: PHOTO_CONFIG.MAX_WIDTH } }],
+        { compress: PHOTO_CONFIG.COMPRESSION_QUALITY, format: ImageManipulator.SaveFormat.JPEG }
+      );
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      setPreviewUri(compressed.uri);
+    }
   };
 
   const skipPhoto = () => {
@@ -211,19 +237,23 @@ export default function ExteriorWalkthroughScreen() {
             ))}
           </View>
 
+          {/* Skip button */}
+          <TouchableOpacity style={styles.skipButton} onPress={skipPhoto}>
+            <Text style={styles.skipText}>Skip this shot</Text>
+            <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.7)" />
+          </TouchableOpacity>
+
           {/* Controls */}
           <View style={styles.controls}>
-            {currentGuide?.label === 'Garage' && (
-              <TouchableOpacity style={styles.skipButton} onPress={skipPhoto}>
-                <Text style={styles.skipText}>Skip (No Garage)</Text>
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity style={styles.libraryButton} onPress={pickFromLibrary}>
+              <Ionicons name="images-outline" size={24} color={colors.white} />
+            </TouchableOpacity>
 
             <TouchableOpacity style={styles.captureButton} onPress={takePhoto}>
               <View style={styles.captureInner} />
             </TouchableOpacity>
 
-            {photos.length > 0 && currentStep >= totalSteps - 1 && (
+            {photos.length > 0 && (
               <TouchableOpacity
                 style={styles.doneButton}
                 onPress={finishExterior}
@@ -232,7 +262,7 @@ export default function ExteriorWalkthroughScreen() {
                 {isSaving ? (
                   <ActivityIndicator color={colors.white} />
                 ) : (
-                  <Text style={styles.doneText}>Done</Text>
+                  <Text style={styles.doneText}>Done ({photos.length})</Text>
                 )}
               </TouchableOpacity>
             )}
@@ -324,6 +354,17 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.8)',
     textAlign: 'center',
   },
+  skipButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.sm,
+  },
+  skipText: {
+    ...typography.bodySmall,
+    color: 'rgba(255,255,255,0.7)',
+  },
   photoStrip: {
     flexDirection: 'row',
     gap: spacing.sm,
@@ -357,15 +398,15 @@ const styles = StyleSheet.create({
     borderRadius: 29,
     backgroundColor: colors.white,
   },
-  skipButton: {
+  libraryButton: {
     position: 'absolute',
     left: 0,
-    paddingVertical: spacing.sm,
-  },
-  skipText: {
-    ...typography.bodySmall,
-    color: colors.white,
-    fontWeight: '500',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   doneButton: {
     position: 'absolute',

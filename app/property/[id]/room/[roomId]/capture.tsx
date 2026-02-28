@@ -11,7 +11,10 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImageManipulator from 'expo-image-manipulator';
+let ImagePicker: any = null;
+try { ImagePicker = require('expo-image-picker'); } catch {}
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { supabase } from '../../../../../src/services/supabase/client';
 import { colors } from '../../../../../src/theme/colors';
 import { typography } from '../../../../../src/theme/typography';
@@ -73,6 +76,7 @@ export default function RoomCaptureScreen() {
 
   const takePhoto = async () => {
     if (!cameraRef.current) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
       const photo = await cameraRef.current.takePictureAsync({ quality: 0.9 });
       if (photo) {
@@ -98,6 +102,28 @@ export default function RoomCaptureScreen() {
   };
 
   const retakePhoto = () => setPreviewUri(null);
+
+  const pickFromLibrary = async () => {
+    if (!ImagePicker) {
+      Alert.alert('Not Available', 'Photo library requires a new app build. Use the camera for now.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      quality: 0.9,
+      allowsEditing: false,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      const compressed = await ImageManipulator.manipulateAsync(
+        result.assets[0].uri,
+        [{ resize: { width: PHOTO_CONFIG.MAX_WIDTH } }],
+        { compress: PHOTO_CONFIG.COMPRESSION_QUALITY, format: ImageManipulator.SaveFormat.JPEG }
+      );
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      setPreviewUri(compressed.uri);
+    }
+  };
 
   const finishCapture = async () => {
     if (photos.length === 0) {
@@ -175,7 +201,19 @@ export default function RoomCaptureScreen() {
             ))}
           </View>
 
+          {/* Skip button */}
+          {currentStep < totalSteps - 1 && (
+            <TouchableOpacity style={styles.skipButton} onPress={() => setCurrentStep((prev) => prev + 1)}>
+              <Text style={styles.skipText}>Skip this shot</Text>
+              <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.7)" />
+            </TouchableOpacity>
+          )}
+
           <View style={styles.controls}>
+            <TouchableOpacity style={styles.libraryButton} onPress={pickFromLibrary}>
+              <Ionicons name="images-outline" size={24} color={colors.white} />
+            </TouchableOpacity>
+
             <TouchableOpacity style={styles.captureButton} onPress={takePhoto}>
               <View style={styles.captureInner} />
             </TouchableOpacity>
@@ -258,6 +296,17 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.8)',
     textAlign: 'center',
   },
+  skipButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.sm,
+  },
+  skipText: {
+    ...typography.bodySmall,
+    color: 'rgba(255,255,255,0.7)',
+  },
   photoStrip: {
     flexDirection: 'row',
     gap: spacing.sm,
@@ -274,6 +323,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: spacing['2xl'],
+  },
+  libraryButton: {
+    position: 'absolute',
+    left: 0,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   captureButton: {
     width: 72,

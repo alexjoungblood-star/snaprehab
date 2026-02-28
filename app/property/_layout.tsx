@@ -6,8 +6,14 @@ export default function PropertyLayout() {
     <Stack
       screenOptions={{
         headerStyle: { backgroundColor: colors.white },
-        headerTintColor: colors.text.primary,
+        headerTintColor: colors.primary[600],
         headerShadowVisible: false,
+        headerTitleStyle: {
+          fontWeight: '600',
+          fontSize: 17,
+          color: colors.text.primary,
+        },
+        headerBackTitle: 'Back',
         contentStyle: { backgroundColor: colors.background },
       }}
     >
@@ -21,7 +27,10 @@ export default function PropertyLayout() {
       />
       <Stack.Screen
         name="[id]/exterior"
-        options={{ title: 'Exterior Walkthrough' }}
+        options={{
+          title: 'Exterior Walkthrough',
+          headerShown: false,
+        }}
       />
       <Stack.Screen
         name="[id]/rooms"
@@ -29,7 +38,10 @@ export default function PropertyLayout() {
       />
       <Stack.Screen
         name="[id]/room/[roomId]/capture"
-        options={{ title: 'Photo Capture' }}
+        options={{
+          title: 'Photo Capture',
+          headerShown: false,
+        }}
       />
       <Stack.Screen
         name="[id]/room/[roomId]/analysis"

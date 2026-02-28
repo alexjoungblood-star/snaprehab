@@ -8,6 +8,7 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { useAuthStore } from '../../src/stores/authStore';
 import { useSettingsStore } from '../../src/stores/settingsStore';
 import { Card } from '../../src/components/ui/Card';
@@ -61,6 +62,7 @@ export default function SettingsScreen() {
   } = useSettingsStore();
 
   const toggleAIProvider = () => {
+    Haptics.selectionAsync();
     const options: AIProviderName[] = ['claude', 'openai'];
     const currentIndex = options.indexOf(aiProvider);
     const nextIndex = (currentIndex + 1) % options.length;
@@ -68,6 +70,7 @@ export default function SettingsScreen() {
   };
 
   const cycleRehabLevel = () => {
+    Haptics.selectionAsync();
     const levels = ['cosmetic', 'moderate', 'full_gut'] as const;
     const currentIndex = levels.indexOf(defaultRehabLevel);
     const nextIndex = (currentIndex + 1) % levels.length;
@@ -75,6 +78,7 @@ export default function SettingsScreen() {
   };
 
   const cycleContingency = () => {
+    Haptics.selectionAsync();
     const options = [10, 15, 20, 25];
     const currentIndex = options.indexOf(defaultContingencyPct);
     const nextIndex = (currentIndex + 1) % options.length;

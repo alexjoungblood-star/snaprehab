@@ -9,11 +9,13 @@ import {
   Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import * as Haptics from 'expo-haptics';
 import { usePropertyStore } from '../../src/stores/propertyStore';
 import { useSettingsStore } from '../../src/stores/settingsStore';
 import { Button } from '../../src/components/ui/Button';
 import { Input } from '../../src/components/ui/Input';
 import { Card } from '../../src/components/ui/Card';
+import { AddressAutocomplete } from '../../src/components/ui/AddressAutocomplete';
 import { colors } from '../../src/theme/colors';
 import { typography } from '../../src/theme/typography';
 import { spacing, borderRadius } from '../../src/theme/spacing';
@@ -57,20 +59,25 @@ export default function CreatePropertyScreen() {
       return;
     }
 
+    // Strip any non-numeric chars (commas, spaces) before parsing
+    const cleanNum = (val: string) => val.replace(/[^0-9]/g, '');
+    const cleanFloat = (val: string) => val.replace(/[^0-9.]/g, '');
+
     const property = await createProperty({
       addressLine1: address.trim(),
       city: city.trim(),
       state: state.trim(),
       zipCode: zipCode.trim(),
-      yearBuilt: yearBuilt ? parseInt(yearBuilt, 10) : undefined,
-      squareFootage: sqft ? parseInt(sqft, 10) : undefined,
-      bedrooms: bedrooms ? parseInt(bedrooms, 10) : undefined,
-      bathrooms: bathrooms ? parseFloat(bathrooms) : undefined,
+      yearBuilt: yearBuilt ? Number(cleanNum(yearBuilt)) || undefined : undefined,
+      squareFootage: sqft ? Number(cleanNum(sqft)) || undefined : undefined,
+      bedrooms: bedrooms ? Number(cleanNum(bedrooms)) || undefined : undefined,
+      bathrooms: bathrooms ? Number(cleanFloat(bathrooms)) || undefined : undefined,
       propertyType,
       rehabLevel,
     });
 
     if (property) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.replace(`/property/${property.id}`);
     }
   };
@@ -86,12 +93,16 @@ export default function CreatePropertyScreen() {
       >
         {/* Address Section */}
         <Text style={styles.sectionTitle}>Property Address</Text>
-        <Input
-          label="Street Address"
-          placeholder="123 Main St"
+        <AddressAutocomplete
           value={address}
           onChangeText={setAddress}
-          autoCapitalize="words"
+          onAddressSelect={(details) => {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            setAddress(details.addressLine1);
+            setCity(details.city);
+            setState(details.state);
+            setZipCode(details.zipCode);
+          }}
         />
         <View style={styles.row}>
           <Input
@@ -171,7 +182,10 @@ export default function CreatePropertyScreen() {
                 styles.chip,
                 propertyType === type.value && styles.chipSelected,
               ]}
-              onPress={() => setPropertyType(type.value)}
+              onPress={() => {
+                Haptics.selectionAsync();
+                setPropertyType(type.value);
+              }}
             >
               <Text
                 style={[
@@ -190,7 +204,10 @@ export default function CreatePropertyScreen() {
         {REHAB_LEVELS.map((level) => (
           <TouchableOpacity
             key={level.value}
-            onPress={() => setRehabLevel(level.value)}
+            onPress={() => {
+              Haptics.selectionAsync();
+              setRehabLevel(level.value);
+            }}
           >
             <Card
               style={[

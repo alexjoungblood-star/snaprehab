@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { usePropertyStore } from '../../../src/stores/propertyStore';
 import { Card } from '../../../src/components/ui/Card';
 import { Badge } from '../../../src/components/ui/Badge';
@@ -142,7 +143,10 @@ export default function PropertyOverviewScreen() {
       {/* Exterior Walkthrough */}
       <Text style={styles.sectionTitle}>Walkthrough</Text>
       <Card
-        onPress={() => router.push(`/property/${id}/exterior`)}
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          router.push(`/property/${id}/exterior`);
+        }}
         style={styles.actionCard}
       >
         <View style={styles.actionRow}>
@@ -163,7 +167,10 @@ export default function PropertyOverviewScreen() {
 
       {/* Rooms */}
       <Card
-        onPress={() => router.push(`/property/${id}/rooms`)}
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          router.push(`/property/${id}/rooms`);
+        }}
         style={styles.actionCard}
       >
         <View style={styles.actionRow}>

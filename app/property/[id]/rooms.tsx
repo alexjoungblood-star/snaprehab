@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,25 +7,32 @@ import {
   TouchableOpacity,
   Modal,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { supabase } from '../../../src/services/supabase/client';
 import { Card } from '../../../src/components/ui/Card';
 import { Badge } from '../../../src/components/ui/Badge';
-import { Button } from '../../../src/components/ui/Button';
 import { Input } from '../../../src/components/ui/Input';
 import { colors } from '../../../src/theme/colors';
 import { typography } from '../../../src/theme/typography';
-import { spacing, borderRadius } from '../../../src/theme/spacing';
+import { spacing } from '../../../src/theme/spacing';
 import type { Room, RoomType } from '../../../src/types/room';
 import { ROOM_TYPE_LABELS, ROOM_TYPE_ICONS } from '../../../src/types/room';
 
-const INTERIOR_ROOM_TYPES: { type: RoomType; label: string; icon: string }[] = [
-  { type: 'kitchen', label: 'Kitchen', icon: 'restaurant-outline' },
-  { type: 'bathroom', label: 'Bathroom', icon: 'water-outline' },
-  { type: 'bedroom', label: 'Bedroom', icon: 'bed-outline' },
-  { type: 'living_room', label: 'Living Room', icon: 'tv-outline' },
+// Priority rooms shown first with "Suggested" header
+const SUGGESTED_ROOMS: { type: RoomType; label: string; icon: string; hint: string }[] = [
+  { type: 'kitchen', label: 'Kitchen', icon: 'restaurant-outline', hint: 'Highest rehab cost — always capture' },
+  { type: 'bathroom', label: 'Bathroom', icon: 'water-outline', hint: 'Add one per bathroom in the property' },
+  { type: 'living_room', label: 'Living Room', icon: 'tv-outline', hint: 'Main living area' },
+  { type: 'bedroom', label: 'Bedroom', icon: 'bed-outline', hint: 'Add one per bedroom' },
+];
+
+// Other rooms shown in a grid below
+const OTHER_ROOMS: { type: RoomType; label: string; icon: string }[] = [
   { type: 'dining_room', label: 'Dining Room', icon: 'cafe-outline' },
   { type: 'laundry', label: 'Laundry', icon: 'shirt-outline' },
   { type: 'basement', label: 'Basement', icon: 'arrow-down-outline' },
@@ -46,11 +53,13 @@ export default function RoomsScreen() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [customLabel, setCustomLabel] = useState('');
-  const [selectedType, setSelectedType] = useState<RoomType | null>(null);
 
-  useEffect(() => {
-    loadRooms();
-  }, []);
+  // Reload rooms when screen comes back into focus
+  useFocusEffect(
+    useCallback(() => {
+      loadRooms();
+    }, [])
+  );
 
   const loadRooms = async () => {
     const { data } = await supabase
@@ -101,7 +110,7 @@ export default function RoomsScreen() {
     if (data) {
       setShowModal(false);
       setCustomLabel('');
-      setSelectedType(null);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       await loadRooms();
 
       // Navigate to capture screen for the new room
@@ -156,50 +165,105 @@ export default function RoomsScreen() {
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
-        {rooms.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Ionicons name="grid-outline" size={48} color={colors.gray[300]} />
-            <Text style={styles.emptyTitle}>No Rooms Added</Text>
-            <Text style={styles.emptySubtitle}>
-              Add rooms to begin your interior walkthrough
+        {/* Suggested rooms section — shown when no rooms added yet */}
+        {rooms.length === 0 && (
+          <View style={styles.suggestedSection}>
+            <Text style={styles.sectionTitle}>Suggested Rooms</Text>
+            <Text style={styles.sectionHint}>
+              Tap to add a room and start taking photos. Kitchen and bathrooms have the biggest impact on rehab cost.
             </Text>
-          </View>
-        ) : (
-          rooms.map((room) => (
-            <Card
-              key={room.id}
-              onPress={() => navigateToRoom(room)}
-              style={styles.roomCard}
-            >
-              <View style={styles.roomRow}>
-                <Ionicons
-                  name={(ROOM_TYPE_ICONS[room.roomType] || 'cube-outline') as any}
-                  size={24}
-                  color={colors.primary[500]}
-                />
-                <View style={styles.roomInfo}>
-                  <Text style={styles.roomName}>
-                    {room.roomLabel || ROOM_TYPE_LABELS[room.roomType]}
-                  </Text>
-                  <Text style={styles.roomType}>
-                    {ROOM_TYPE_LABELS[room.roomType]}
-                  </Text>
+            {SUGGESTED_ROOMS.map((rt) => (
+              <TouchableOpacity
+                key={rt.type}
+                style={styles.suggestedCard}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  addRoom(rt.type);
+                }}
+                activeOpacity={0.7}
+              >
+                <View style={styles.suggestedIcon}>
+                  <Ionicons name={rt.icon as any} size={28} color={colors.primary[500]} />
                 </View>
-                <Badge
-                  label={room.status.replace(/_/g, ' ')}
-                  variant={statusVariant(room.status)}
-                />
+                <View style={styles.suggestedInfo}>
+                  <Text style={styles.suggestedLabel}>{rt.label}</Text>
+                  <Text style={styles.suggestedHint}>{rt.hint}</Text>
+                </View>
+                <Ionicons name="add-circle" size={28} color={colors.primary[500]} />
+              </TouchableOpacity>
+            ))}
+
+            <TouchableOpacity
+              style={styles.moreRoomsButton}
+              onPress={() => setShowModal(true)}
+            >
+              <Ionicons name="grid-outline" size={20} color={colors.primary[500]} />
+              <Text style={styles.moreRoomsText}>More room types...</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Existing rooms list */}
+        {rooms.length > 0 && (
+          <>
+            <Text style={styles.sectionTitle}>
+              {rooms.length} Room{rooms.length !== 1 ? 's' : ''} Added
+            </Text>
+            {rooms.map((room) => (
+              <Card
+                key={room.id}
+                onPress={() => navigateToRoom(room)}
+                style={styles.roomCard}
+              >
+                <View style={styles.roomRow}>
+                  <Ionicons
+                    name={(ROOM_TYPE_ICONS[room.roomType] || 'cube-outline') as any}
+                    size={24}
+                    color={colors.primary[500]}
+                  />
+                  <View style={styles.roomInfo}>
+                    <Text style={styles.roomName}>
+                      {room.roomLabel || ROOM_TYPE_LABELS[room.roomType]}
+                    </Text>
+                    <Text style={styles.roomType}>
+                      {ROOM_TYPE_LABELS[room.roomType]}
+                    </Text>
+                  </View>
+                  <Badge
+                    label={room.status.replace(/_/g, ' ')}
+                    variant={statusVariant(room.status)}
+                  />
+                  <TouchableOpacity
+                    onPress={() =>
+                      deleteRoom(room.id, room.roomLabel || ROOM_TYPE_LABELS[room.roomType])
+                    }
+                    hitSlop={8}
+                  >
+                    <Ionicons name="trash-outline" size={18} color={colors.gray[400]} />
+                  </TouchableOpacity>
+                </View>
+              </Card>
+            ))}
+
+            {/* Quick-add suggested rooms that aren't added yet */}
+            <Text style={[styles.sectionTitle, { marginTop: spacing.xl }]}>Add More Rooms</Text>
+            <View style={styles.quickAddRow}>
+              {SUGGESTED_ROOMS.map((rt) => (
                 <TouchableOpacity
-                  onPress={() =>
-                    deleteRoom(room.id, room.roomLabel || ROOM_TYPE_LABELS[room.roomType])
-                  }
-                  hitSlop={8}
+                  key={rt.type}
+                  style={styles.quickAddChip}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    addRoom(rt.type);
+                  }}
                 >
-                  <Ionicons name="trash-outline" size={18} color={colors.gray[400]} />
+                  <Ionicons name={rt.icon as any} size={18} color={colors.primary[500]} />
+                  <Text style={styles.quickAddLabel}>{rt.label}</Text>
+                  <Ionicons name="add" size={16} color={colors.primary[500]} />
                 </TouchableOpacity>
-              </View>
-            </Card>
-          ))
+              ))}
+            </View>
+          </>
         )}
       </ScrollView>
 
@@ -214,8 +278,17 @@ export default function RoomsScreen() {
 
       {/* Room Type Selection Modal */}
       <Modal visible={showModal} animationType="slide" transparent>
-        <View style={styles.modalBackdrop}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalBackdrop}
+        >
+          <TouchableOpacity
+            style={styles.modalDismiss}
+            activeOpacity={1}
+            onPress={() => setShowModal(false)}
+          />
           <View style={styles.modalContent}>
+            <View style={styles.modalHandle} />
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Add Room</Text>
               <TouchableOpacity onPress={() => setShowModal(false)}>
@@ -224,19 +297,23 @@ export default function RoomsScreen() {
             </View>
 
             <Input
-              placeholder="Custom label (optional)"
+              placeholder="Custom label (e.g. Master Bath, 2nd Bedroom)"
               value={customLabel}
               onChangeText={setCustomLabel}
               containerStyle={styles.labelInput}
             />
 
-            <ScrollView style={styles.roomTypeGrid}>
+            <ScrollView style={styles.roomTypeGrid} keyboardShouldPersistTaps="handled">
+              <Text style={styles.gridSectionTitle}>Popular</Text>
               <View style={styles.grid}>
-                {INTERIOR_ROOM_TYPES.map((rt) => (
+                {SUGGESTED_ROOMS.map((rt) => (
                   <TouchableOpacity
                     key={rt.type}
                     style={styles.roomTypeItem}
-                    onPress={() => addRoom(rt.type)}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      addRoom(rt.type);
+                    }}
                   >
                     <View style={styles.roomTypeIcon}>
                       <Ionicons
@@ -249,9 +326,32 @@ export default function RoomsScreen() {
                   </TouchableOpacity>
                 ))}
               </View>
+
+              <Text style={[styles.gridSectionTitle, { marginTop: spacing.lg }]}>Other</Text>
+              <View style={styles.grid}>
+                {OTHER_ROOMS.map((rt) => (
+                  <TouchableOpacity
+                    key={rt.type}
+                    style={styles.roomTypeItem}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      addRoom(rt.type);
+                    }}
+                  >
+                    <View style={styles.roomTypeIcon}>
+                      <Ionicons
+                        name={rt.icon as any}
+                        size={28}
+                        color={colors.gray[500]}
+                      />
+                    </View>
+                    <Text style={styles.roomTypeLabel}>{rt.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
             </ScrollView>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
@@ -267,22 +367,67 @@ const styles = StyleSheet.create({
     paddingBottom: spacing['5xl'],
     flexGrow: 1,
   },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingTop: spacing['5xl'],
-  },
-  emptyTitle: {
+  sectionTitle: {
     ...typography.heading3,
     color: colors.text.primary,
-    marginTop: spacing.lg,
+    marginBottom: spacing.sm,
   },
-  emptySubtitle: {
+  sectionHint: {
     ...typography.bodySmall,
     color: colors.text.secondary,
-    marginTop: spacing.xs,
+    marginBottom: spacing.lg,
+    lineHeight: 20,
   },
+  // Suggested rooms (empty state)
+  suggestedSection: {
+    paddingTop: spacing.md,
+  },
+  suggestedCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    borderRadius: 12,
+    padding: spacing.base,
+    marginBottom: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: spacing.md,
+  },
+  suggestedIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.primary[50],
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  suggestedInfo: {
+    flex: 1,
+  },
+  suggestedLabel: {
+    ...typography.body,
+    fontWeight: '600',
+    color: colors.text.primary,
+  },
+  suggestedHint: {
+    ...typography.caption,
+    color: colors.text.secondary,
+    marginTop: 2,
+  },
+  moreRoomsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.lg,
+    marginTop: spacing.sm,
+  },
+  moreRoomsText: {
+    ...typography.body,
+    color: colors.primary[500],
+    fontWeight: '500',
+  },
+  // Room list
   roomCard: {
     marginBottom: spacing.sm,
   },
@@ -303,6 +448,29 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.text.secondary,
   },
+  // Quick add chips
+  quickAddRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  quickAddChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: colors.primary[50],
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.primary[100],
+  },
+  quickAddLabel: {
+    ...typography.bodySmall,
+    color: colors.primary[700],
+    fontWeight: '500',
+  },
+  // FAB
   fab: {
     position: 'absolute',
     right: spacing.xl,
@@ -319,19 +487,31 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 8,
   },
+  // Modal
   modalBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
+  },
+  modalDismiss: {
+    flex: 1,
   },
   modalContent: {
     backgroundColor: colors.white,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingHorizontal: spacing.base,
-    paddingTop: spacing.lg,
+    paddingTop: spacing.sm,
     paddingBottom: spacing['3xl'],
     maxHeight: '80%',
+  },
+  modalHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.gray[300],
+    alignSelf: 'center',
+    marginBottom: spacing.md,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -348,6 +528,14 @@ const styles = StyleSheet.create({
   },
   roomTypeGrid: {
     flex: 1,
+  },
+  gridSectionTitle: {
+    ...typography.bodySmall,
+    color: colors.text.secondary,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: spacing.sm,
   },
   grid: {
     flexDirection: 'row',
