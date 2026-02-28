@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -38,9 +38,11 @@ export default function RoomCaptureScreen() {
   const [photos, setPhotos] = useState<CapturedPhoto[]>([]);
   const [previewUri, setPreviewUri] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [zoom, setZoom] = useState(0);
 
   useEffect(() => {
     loadRoom();
+    loadExistingPhotos();
   }, []);
 
   const loadRoom = async () => {
@@ -53,6 +55,23 @@ export default function RoomCaptureScreen() {
     if (data) {
       setRoomType(data.room_type);
       setRoomLabel(data.room_label || ROOM_TYPE_LABELS[data.room_type as keyof typeof ROOM_TYPE_LABELS] || 'Room');
+    }
+  };
+
+  const loadExistingPhotos = async () => {
+    const { data } = await supabase
+      .from('photos')
+      .select('local_uri, photo_position')
+      .eq('room_id', roomId)
+      .order('photo_position');
+
+    if (data && data.length > 0) {
+      const existing: CapturedPhoto[] = data
+        .filter((p) => p.local_uri)
+        .map((p) => ({ uri: p.local_uri!, position: p.photo_position }));
+      if (existing.length > 0) {
+        setPhotos(existing);
+      }
     }
   };
 
@@ -78,7 +97,7 @@ export default function RoomCaptureScreen() {
     if (!cameraRef.current) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
-      const photo = await cameraRef.current.takePictureAsync({ quality: 0.9 });
+      const photo = await cameraRef.current.takePictureAsync({ quality: 0.9, exif: true });
       if (photo) {
         const compressed = await ImageManipulator.manipulateAsync(
           photo.uri,
@@ -161,7 +180,7 @@ export default function RoomCaptureScreen() {
   if (previewUri) {
     return (
       <View style={styles.container}>
-        <Image source={{ uri: previewUri }} style={styles.preview} />
+        <Image source={{ uri: previewUri }} style={styles.preview} resizeMode="cover" />
         <View style={styles.previewOverlay}>
           <Text style={styles.previewLabel}>{currentGuide?.label}</Text>
           <View style={styles.previewActions}>
@@ -181,7 +200,7 @@ export default function RoomCaptureScreen() {
 
   return (
     <View style={styles.container}>
-      <CameraView ref={cameraRef} style={styles.camera} facing="back">
+      <CameraView ref={cameraRef} style={styles.camera} facing="back" zoom={zoom}>
         <View style={styles.guideOverlay}>
           <View style={styles.topBar}>
             <Text style={styles.roomTitle}>{roomLabel}</Text>
@@ -208,6 +227,29 @@ export default function RoomCaptureScreen() {
               <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.7)" />
             </TouchableOpacity>
           )}
+
+          {/* Zoom controls */}
+          {zoom > 0 && (
+            <View style={styles.zoomIndicator}>
+              <Text style={styles.zoomText}>{(1 + zoom * 9).toFixed(1)}x</Text>
+            </View>
+          )}
+          <View style={styles.zoomControls}>
+            <TouchableOpacity
+              style={styles.zoomButton}
+              onPress={() => setZoom((z) => Math.max(0, z - 0.1))}
+              disabled={zoom <= 0}
+            >
+              <Ionicons name="remove" size={20} color={zoom <= 0 ? 'rgba(255,255,255,0.3)' : colors.white} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.zoomButton}
+              onPress={() => setZoom((z) => Math.min(1, z + 0.1))}
+              disabled={zoom >= 1}
+            >
+              <Ionicons name="add" size={20} color={zoom >= 1 ? 'rgba(255,255,255,0.3)' : colors.white} />
+            </TouchableOpacity>
+          </View>
 
           <View style={styles.controls}>
             <TouchableOpacity style={styles.libraryButton} onPress={pickFromLibrary}>
@@ -306,6 +348,27 @@ const styles = StyleSheet.create({
   skipText: {
     ...typography.bodySmall,
     color: 'rgba(255,255,255,0.7)',
+  },
+  zoomControls: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: spacing.sm,
+  },
+  zoomButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  zoomIndicator: {
+    alignSelf: 'center',
+  },
+  zoomText: {
+    ...typography.bodySmall,
+    color: colors.white,
+    fontWeight: '600',
   },
   photoStrip: {
     flexDirection: 'row',
